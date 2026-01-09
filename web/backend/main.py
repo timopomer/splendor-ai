@@ -12,35 +12,19 @@ from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
-# Support both relative and absolute imports (for running as module vs direct)
-try:
-    from .rooms import room_manager, Room
-    from .schemas import (
-        CreateRoomRequest,
-        CreateRoomResponse,
-        JoinRoomRequest,
-        JoinRoomResponse,
-        ConfigureSeatRequest,
-        RoomInfoSchema,
-        SeatInfo,
-        GameStateSchema,
-        SubmitActionRequest,
-        SubmitActionResponse,
-    )
-except ImportError:
-    from rooms import room_manager, Room
-    from schemas import (
-        CreateRoomRequest,
-        CreateRoomResponse,
-        JoinRoomRequest,
-        JoinRoomResponse,
-        ConfigureSeatRequest,
-        RoomInfoSchema,
-        SeatInfo,
-        GameStateSchema,
-        SubmitActionRequest,
-        SubmitActionResponse,
-    )
+from rooms import room_manager, Room
+from schemas import (
+    CreateRoomRequest,
+    CreateRoomResponse,
+    JoinRoomRequest,
+    JoinRoomResponse,
+    ConfigureSeatRequest,
+    RoomInfoSchema,
+    SeatInfo,
+    GameStateSchema,
+    SubmitActionRequest,
+    SubmitActionResponse,
+)
 
 app = FastAPI(
     title="Splendor Web API",

@@ -21,29 +21,16 @@ from splendor.game.actions import (
 from splendor.models.gems import GemType
 from splendor.rl.policy import Policy, RandomPolicy
 
-# Support both relative and absolute imports
-try:
-    from .schemas import (
-        GameStateSchema,
-        GemCollectionSchema,
-        CardSchema,
-        HiddenCardSchema,
-        NobleSchema,
-        PlayerSchema,
-        SeatInfo,
-        ActionSchema,
-    )
-except ImportError:
-    from schemas import (
-        GameStateSchema,
-        GemCollectionSchema,
-        CardSchema,
-        HiddenCardSchema,
-        NobleSchema,
-        PlayerSchema,
-        SeatInfo,
-        ActionSchema,
-    )
+from schemas import (
+    GameStateSchema,
+    GemCollectionSchema,
+    CardSchema,
+    HiddenCardSchema,
+    NobleSchema,
+    PlayerSchema,
+    SeatInfo,
+    ActionSchema,
+)
 
 
 def generate_room_id() -> str:
