@@ -21,7 +21,7 @@ from splendor.game.actions import (
 from splendor.models.gems import GemType
 from splendor.rl.policy import Policy, RandomPolicy
 
-from schemas import (
+from .schemas import (
     GameStateSchema,
     GemCollectionSchema,
     CardSchema,

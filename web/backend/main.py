@@ -12,8 +12,8 @@ from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
-from rooms import room_manager, Room
-from schemas import (
+from .rooms import room_manager, Room
+from .schemas import (
     CreateRoomRequest,
     CreateRoomResponse,
     JoinRoomRequest,
