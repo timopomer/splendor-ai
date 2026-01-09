@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from itertools import combinations
 from typing import Optional
 
 from splendor.data import load_cards_by_tier, load_nobles
@@ -29,7 +30,7 @@ from splendor.models.player import Player
 class GameEngine:
     """
     Engine for running Splendor games.
-    
+
     Handles:
     - Game initialization with shuffled decks
     - Action validation
@@ -40,14 +41,14 @@ class GameEngine:
     def __init__(self, num_players: int = 2, seed: Optional[int] = None):
         """
         Initialize the game engine.
-        
+
         Args:
             num_players: Number of players (2-4)
             seed: Random seed for reproducibility
         """
         if num_players < 2 or num_players > 4:
             raise ValueError("Number of players must be between 2 and 4")
-        
+
         self.config = GameConfig(num_players=num_players)
         self.rng = random.Random(seed)
         self._state: Optional[GameState] = None
@@ -62,7 +63,7 @@ class GameEngine:
     def reset(self) -> GameState:
         """
         Start a new game with shuffled decks.
-        
+
         Returns:
             Initial game state
         """
@@ -88,11 +89,11 @@ class GameEngine:
         for tier in (1, 2, 3):
             deck = list(cards_by_tier[tier])
             self.rng.shuffle(deck)
-            
+
             # Deal visible cards
             visible = deck[:VISIBLE_CARDS_PER_TIER]
             remaining = deck[VISIBLE_CARDS_PER_TIER:]
-            
+
             visible_cards[tier] = tuple(visible)
             card_decks[tier] = tuple(remaining)
 
@@ -117,10 +118,10 @@ class GameEngine:
     def step(self, action: Action) -> GameState:
         """
         Execute an action and advance the game.
-        
+
         Args:
             action: The action to execute
-            
+
         Returns:
             New game state after the action
         """
@@ -176,9 +177,7 @@ class GameEngine:
         new_bank = bank - gems_taken
 
         # Handle token return if over limit
-        new_player, new_bank = self._handle_token_return(
-            new_player, new_bank, action.return_gems
-        )
+        new_player, new_bank = self._handle_token_return(new_player, new_bank, action.return_gems)
 
         return state.with_current_player(new_player).with_bank(new_bank)
 
@@ -199,9 +198,7 @@ class GameEngine:
         new_bank = bank - gems_taken
 
         # Handle token return if over limit
-        new_player, new_bank = self._handle_token_return(
-            new_player, new_bank, action.return_gems
-        )
+        new_player, new_bank = self._handle_token_return(new_player, new_bank, action.return_gems)
 
         return state.with_current_player(new_player).with_bank(new_bank)
 
@@ -235,9 +232,7 @@ class GameEngine:
             bank = bank.remove_gem(GemType.GOLD)
 
         # Handle token return if over limit
-        new_player, bank = self._handle_token_return(
-            new_player, bank, action.return_gems
-        )
+        new_player, bank = self._handle_token_return(new_player, bank, action.return_gems)
 
         return state.with_current_player(new_player).with_bank(bank)
 
@@ -266,9 +261,7 @@ class GameEngine:
             bank = bank.remove_gem(GemType.GOLD)
 
         # Handle token return if over limit
-        new_player, bank = self._handle_token_return(
-            new_player, bank, action.return_gems
-        )
+        new_player, bank = self._handle_token_return(new_player, bank, action.return_gems)
 
         return state.with_current_player(new_player).with_bank(bank)
 
@@ -357,17 +350,13 @@ class GameEngine:
         """Check if any nobles visit the current player."""
         player = state.current_player
         remaining_nobles = []
-        
+
         for noble in state.nobles:
             if noble.can_visit(player.bonuses):
                 player = player.add_noble(noble)
                 # Only one noble visits per turn
-                remaining_nobles.extend(
-                    n for n in state.nobles if n.id != noble.id
-                )
-                return state.with_current_player(player).with_nobles(
-                    tuple(remaining_nobles)
-                )
+                remaining_nobles.extend(n for n in state.nobles if n.id != noble.id)
+                return state.with_current_player(player).with_nobles(tuple(remaining_nobles))
             remaining_nobles.append(noble)
 
         return state.with_current_player(player)
@@ -375,7 +364,7 @@ class GameEngine:
     def get_valid_actions(self) -> list[Action]:
         """
         Get all valid actions for the current player.
-        
+
         Returns:
             List of valid actions
         """
@@ -387,29 +376,20 @@ class GameEngine:
         max_tokens = self.config.max_tokens_per_player
 
         # Take 3 different gems (only if won't exceed 10, or can take fewer)
-        available_gems = [
-            gt for gt in GemType.base_gems() if bank.get(gt) > 0
-        ]
+        available_gems = [gt for gt in GemType.base_gems() if bank.get(gt) > 0]
         if available_gems:
-            from itertools import combinations
             # How many can we take without exceeding limit?
             can_take = min(len(available_gems), max_tokens - current_tokens, 3)
             if can_take > 0:
                 if can_take >= 3 and len(available_gems) >= 3:
                     for combo in combinations(available_gems, 3):
-                        actions.append(TakeThreeDifferentAction(
-                            gems=tuple(g.value for g in combo)
-                        ))
+                        actions.append(TakeThreeDifferentAction(gems=tuple(g.value for g in combo)))
                 elif can_take >= 2 and len(available_gems) >= 2:
                     for combo in combinations(available_gems, min(can_take, len(available_gems))):
-                        actions.append(TakeThreeDifferentAction(
-                            gems=tuple(g.value for g in combo)
-                        ))
+                        actions.append(TakeThreeDifferentAction(gems=tuple(g.value for g in combo)))
                 elif can_take >= 1:
                     for gem in available_gems:
-                        actions.append(TakeThreeDifferentAction(
-                            gems=(gem.value,)
-                        ))
+                        actions.append(TakeThreeDifferentAction(gems=(gem.value,)))
 
         # Take 2 same gems (only if won't exceed 10)
         if current_tokens <= max_tokens - 2:
@@ -440,4 +420,3 @@ class GameEngine:
                 actions.append(PurchaseReservedAction(card_id=card.id))
 
         return actions
-

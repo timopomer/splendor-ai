@@ -24,9 +24,7 @@ class DevelopmentCard(BaseModel, frozen=True):
     tier: Literal[1, 2, 3] = Field(description="Card tier (1=basic, 2=mid, 3=high)")
     bonus: GemType = Field(description="Permanent gem bonus provided")
     points: int = Field(default=0, ge=0, le=5, description="Victory points (0-5)")
-    cost: GemCollection = Field(
-        default_factory=GemCollection, description="Gem cost to purchase"
-    )
+    cost: GemCollection = Field(default_factory=GemCollection, description="Gem cost to purchase")
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -35,4 +33,3 @@ class DevelopmentCard(BaseModel, frozen=True):
         if not isinstance(other, DevelopmentCard):
             return NotImplemented
         return self.id == other.id
-

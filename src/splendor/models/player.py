@@ -27,9 +27,7 @@ class Player(BaseModel, frozen=True):
     cards: tuple[DevelopmentCard, ...] = Field(
         default=(), description="Purchased development cards"
     )
-    reserved: tuple[DevelopmentCard, ...] = Field(
-        default=(), description="Reserved cards (max 3)"
-    )
+    reserved: tuple[DevelopmentCard, ...] = Field(default=(), description="Reserved cards (max 3)")
     nobles: tuple[Noble, ...] = Field(default=(), description="Attracted nobles")
 
     @computed_field
@@ -145,4 +143,3 @@ class Player(BaseModel, frozen=True):
     def add_noble(self, noble: Noble) -> Player:
         """Return a new player with an attracted noble."""
         return self.model_copy(update={"nobles": self.nobles + (noble,)})
-

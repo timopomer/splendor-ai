@@ -101,4 +101,3 @@ class TestActionImmutability:
             assert False, "Should have raised"
         except Exception:
             pass  # Expected
-

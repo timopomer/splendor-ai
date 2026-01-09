@@ -52,8 +52,7 @@ class TestPlayer:
 
     def test_can_reserve_at_limit(self):
         reserved = tuple(
-            DevelopmentCard(id=f"r{i}", tier=1, bonus=GemType.DIAMOND)
-            for i in range(3)
+            DevelopmentCard(id=f"r{i}", tier=1, bonus=GemType.DIAMOND) for i in range(3)
         )
         player = Player(id=0, reserved=reserved)
         assert not player.can_reserve
@@ -154,8 +153,7 @@ class TestPlayerMutations:
 
     def test_add_reserved_at_limit_raises(self):
         reserved = tuple(
-            DevelopmentCard(id=f"r{i}", tier=1, bonus=GemType.DIAMOND)
-            for i in range(3)
+            DevelopmentCard(id=f"r{i}", tier=1, bonus=GemType.DIAMOND) for i in range(3)
         )
         player = Player(id=0, reserved=reserved)
         card = DevelopmentCard(id="extra", tier=1, bonus=GemType.RUBY)
@@ -180,4 +178,3 @@ class TestPlayerMutations:
         updated = player.add_noble(noble)
         assert len(updated.nobles) == 1
         assert updated.points == 3
-

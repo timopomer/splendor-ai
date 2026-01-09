@@ -74,9 +74,7 @@ class GameState(BaseModel, frozen=True):
     def validate_player_count(self) -> "GameState":
         """Validate that player count matches config."""
         if len(self.players) != self.config.num_players:
-            raise ValueError(
-                f"Expected {self.config.num_players} players, got {len(self.players)}"
-            )
+            raise ValueError(f"Expected {self.config.num_players} players, got {len(self.players)}")
         return self
 
     @property
@@ -123,9 +121,7 @@ class GameState(BaseModel, frozen=True):
         """Return a new state with an updated bank."""
         return self.model_copy(update={"bank": bank})
 
-    def with_visible_cards(
-        self, tier: int, cards: tuple[DevelopmentCard, ...]
-    ) -> GameState:
+    def with_visible_cards(self, tier: int, cards: tuple[DevelopmentCard, ...]) -> GameState:
         """Return a new state with updated visible cards for a tier."""
         new_visible = dict(self.visible_cards)
         new_visible[tier] = cards
@@ -187,8 +183,7 @@ class GameState(BaseModel, frozen=True):
 
                 for idx, player in enumerate(state.players):
                     if player.points > winner_points or (
-                        player.points == winner_points
-                        and len(player.cards) < winner_cards
+                        player.points == winner_points and len(player.cards) < winner_cards
                     ):
                         winner_idx = idx
                         winner_points = player.points
@@ -215,4 +210,3 @@ class GameState(BaseModel, frozen=True):
             visible.append(deck.pop(0))
 
         return self.with_visible_cards(tier, tuple(visible)).with_deck(tier, tuple(deck))
-

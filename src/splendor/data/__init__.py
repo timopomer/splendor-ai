@@ -67,4 +67,3 @@ def load_cards_by_tier() -> dict[int, list[DevelopmentCard]]:
 
 
 __all__ = ["load_cards", "load_nobles", "load_cards_by_tier"]
-
