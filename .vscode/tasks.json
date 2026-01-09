@@ -2,33 +2,98 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "RL Training (multiprocess)",
+            "label": "Install Web Frontend Dependencies",
             "type": "shell",
-            "command": "uv run python scripts/rl_tui.py --arch gpu-heavy --multiprocess",
+            "command": "pnpm install",
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/web/frontend"
             },
-            "presentation": {
-                "reveal": "always",
-                "panel": "new",
-                "focus": true
-            },
-            "problemMatcher": []
+            "problemMatcher": [],
+            "group": "build"
         },
         {
-            "label": "RL Training (single process)",
+            "label": "Install Web E2E Dependencies",
             "type": "shell",
-            "command": "uv run python scripts/rl_tui.py --arch gpu-heavy",
+            "command": "pnpm install && pnpm exec playwright install",
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/web/e2e"
             },
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Install All Web Dependencies",
+            "dependsOn": ["Install Web Frontend Dependencies", "Install Web E2E Dependencies"],
+            "problemMatcher": [],
+            "group": "build"
+        },
+        {
+            "label": "Ensure Web Frontend Ready",
+            "type": "shell",
+            "command": "test -d node_modules || pnpm install",
+            "options": {
+                "cwd": "${workspaceFolder}/web/frontend"
+            },
+            "problemMatcher": [],
             "presentation": {
-                "reveal": "always",
-                "panel": "new",
-                "focus": true
+                "reveal": "silent",
+                "close": true
+            }
+        },
+        {
+            "label": "Ensure Web Backend Ready",
+            "type": "shell",
+            "command": "echo 'Backend ready'",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "silent",
+                "close": true
+            }
+        },
+        {
+            "label": "Run Web Backend",
+            "type": "shell",
+            "command": "uv run --extra web -- python -m uvicorn main:app --reload --port 8000",
+            "options": {
+                "cwd": "${workspaceFolder}/web/backend",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder}/src"
+                }
             },
-            "problemMatcher": []
+            "problemMatcher": [],
+            "isBackground": true,
+            "group": "build"
+        },
+        {
+            "label": "Run Web Frontend",
+            "type": "shell",
+            "command": "pnpm dev",
+            "options": {
+                "cwd": "${workspaceFolder}/web/frontend"
+            },
+            "problemMatcher": [],
+            "isBackground": true,
+            "group": "build"
+        },
+        {
+            "label": "Run Playwright Tests",
+            "type": "shell",
+            "command": "pnpm test",
+            "options": {
+                "cwd": "${workspaceFolder}/web/e2e"
+            },
+            "problemMatcher": [],
+            "group": "test"
+        },
+        {
+            "label": "Run Playwright Tests (UI)",
+            "type": "shell",
+            "command": "pnpm test:ui",
+            "options": {
+                "cwd": "${workspaceFolder}/web/e2e"
+            },
+            "problemMatcher": [],
+            "group": "test"
         }
     ]
 }
-

@@ -1,0 +1,2 @@
+"""Splendor web backend package."""
+

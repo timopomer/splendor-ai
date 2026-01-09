@@ -1,0 +1,13 @@
+{
+  "name": "splendor-web-monorepo",
+  "private": true,
+  "packageManager": "pnpm@9.14.2",
+  "scripts": {
+    "install:all": "pnpm install",
+    "dev:frontend": "pnpm --filter splendor-web dev",
+    "dev:backend": "cd backend && PYTHONPATH=../src python -m uvicorn main:app --reload --port 8000",
+    "test:e2e": "pnpm --filter splendor-e2e test",
+    "test:e2e:ui": "pnpm --filter splendor-e2e test:ui"
+  }
+}
+
