@@ -3,6 +3,6 @@
 from splendor.gui.main import main
 
 if __name__ == "__main__":
-    # Start directly with 2 players for testing (skip menu)
-    main(skip_menu=True, num_players=2)
+    # Start on menu so user can choose player count + human/bot seats.
+    main(skip_menu=False, num_players=2)
 
