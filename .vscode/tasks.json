@@ -1,0 +1,34 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "RL Training (multiprocess)",
+            "type": "shell",
+            "command": "uv run python scripts/rl_tui.py --arch gpu-heavy --multiprocess",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                "focus": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "RL Training (single process)",
+            "type": "shell",
+            "command": "uv run python scripts/rl_tui.py --arch gpu-heavy",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new",
+                "focus": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}
+

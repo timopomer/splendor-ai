@@ -10,7 +10,7 @@ from splendor.models.cards import DevelopmentCard
 from splendor.models.gems import GemType
 from splendor.models.nobles import Noble
 from splendor.models.player import Player
-from splendor.gui import (
+from splendor.gui.constants import (
     GEM_COLORS,
     BACKGROUND_COLOR,
     PANEL_COLOR,

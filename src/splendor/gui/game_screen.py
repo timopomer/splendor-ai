@@ -20,7 +20,7 @@ from splendor.game.actions import (
 )
 from splendor.models.cards import DevelopmentCard
 from splendor.models.gems import GemType
-from splendor.gui import (
+from splendor.gui.constants import (
     WINDOW_WIDTH,
     WINDOW_HEIGHT,
     CARD_WIDTH,
@@ -545,6 +545,18 @@ class GameScreen:
         # Check for turn change
         if self.engine.state.turn_number > old_turn:
             self._log_turn_change(self.engine.state.turn_number)
+
+    def execute_external_action(self, action: Action) -> None:
+        """Execute an action originating outside the click UI (e.g. bot turn)."""
+        if self.engine.state.game_over:
+            return
+        try:
+            self._execute_action(action)
+            self.reset_selection()
+        except ValueError as e:
+            # Shouldn't happen if caller uses `engine.get_valid_actions()`,
+            # but keep the GUI resilient.
+            self.message = str(e)
 
     def _execute_take_gems(self):
         """Execute a take gems action."""

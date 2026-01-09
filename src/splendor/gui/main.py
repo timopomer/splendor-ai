@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import sys
 from enum import Enum, auto
+from pathlib import Path
 
 import pygame
 
 from splendor.game.engine import GameEngine
-from splendor.gui import (
+from splendor.gui.constants import (
     WINDOW_WIDTH,
     WINDOW_HEIGHT,
     FPS,
@@ -43,6 +44,13 @@ class SplendorApp:
         
         self.state = AppState.MENU
         self.selected_players = 2
+        # Per-seat player type for seats 0..3 (only first `selected_players` are used).
+        self.seat_is_bot: list[bool] = [False, False, False, False]
+        # Bot policy settings (PPO model is optional).
+        self.bot_policy_name: str = "random"  # "random" | "ppo"
+        self.bot_model_path: str = "artifacts/splendor_ppo.zip"
+        self._bot_policy = None
+        self._last_bot_move_ms: int = 0
         self.game_screen: GameScreen | None = None
         
         self.running = True
@@ -51,6 +59,7 @@ class SplendorApp:
         """Main application loop."""
         while self.running:
             self._handle_events()
+            self._maybe_play_bot_turn()
             self._draw()
             pygame.display.flip()
             self.clock.tick(FPS)
@@ -88,6 +97,20 @@ class SplendorApp:
             btn_rect = self._get_player_button_rect(i)
             if btn_rect.collidepoint(pos):
                 self.selected_players = num_players
+                # Ensure seats outside selected range are reset to human.
+                for j in range(self.selected_players, 4):
+                    self.seat_is_bot[j] = False
+
+        # Check per-seat human/bot toggle buttons
+        for seat in range(self.selected_players):
+            rect = self._get_seat_type_button_rect(seat)
+            if rect.collidepoint(pos):
+                self.seat_is_bot[seat] = not self.seat_is_bot[seat]
+
+        # Check bot policy toggle button
+        policy_rect = self._get_policy_button_rect()
+        if policy_rect.collidepoint(pos):
+            self.bot_policy_name = "ppo" if self.bot_policy_name == "random" else "random"
 
         # Check start button
         start_rect = self._get_start_button_rect()
@@ -105,14 +128,78 @@ class SplendorApp:
 
     def _get_start_button_rect(self) -> pygame.Rect:
         """Get the rect for the start button."""
-        return pygame.Rect(WINDOW_WIDTH // 2 - 100, 500, 200, 60)
+        return pygame.Rect(WINDOW_WIDTH // 2 - 110, 575, 220, 60)
+
+    def _get_seat_type_button_rect(self, seat_idx: int) -> pygame.Rect:
+        """Button rect to toggle a seat between Human/Bot."""
+        center_x = WINDOW_WIDTH // 2
+        btn_width = 170
+        btn_height = 48
+        gap = 18
+        total = self.selected_players * btn_width + (self.selected_players - 1) * gap
+        start_x = center_x - total // 2
+        x = start_x + seat_idx * (btn_width + gap)
+        return pygame.Rect(x, 455, btn_width, btn_height)
+
+    def _get_policy_button_rect(self) -> pygame.Rect:
+        """Button rect to toggle bot policy (Random/PPO)."""
+        return pygame.Rect(WINDOW_WIDTH // 2 - 170, 520, 340, 44)
 
     def _start_game(self):
         """Start a new game with the selected number of players."""
         engine = GameEngine(num_players=self.selected_players)
         engine.reset()
         self.game_screen = GameScreen(engine=engine, renderer=self.renderer)
+        self._bot_policy = None
+        self._last_bot_move_ms = pygame.time.get_ticks()
         self.state = AppState.PLAYING
+
+    def _maybe_play_bot_turn(self) -> None:
+        """If it's a bot's turn, auto-play one action with a small delay."""
+        if self.state != AppState.PLAYING or not self.game_screen:
+            return
+        state = self.game_screen.engine.state
+        if state.game_over:
+            return
+
+        cur = state.current_player_idx
+        if cur >= len(self.seat_is_bot) or not self.seat_is_bot[cur]:
+            return
+
+        # Throttle bot moves so humans can follow.
+        now = pygame.time.get_ticks()
+        if now - self._last_bot_move_ms < 250:
+            return
+        self._last_bot_move_ms = now
+
+        valid_actions = self.game_screen.engine.get_valid_actions()
+        if not valid_actions:
+            return
+
+        # Lazy-load the policy.
+        if self._bot_policy is None:
+            if self.bot_policy_name == "ppo":
+                try:
+                    from splendor.rl.policy import SB3PPOPolicy
+
+                    model_path = str(Path(self.bot_model_path))
+                    self._bot_policy = SB3PPOPolicy(model_path=model_path, deterministic=True)
+                except Exception:
+                    # Fall back to random if PPO isn't available.
+                    from splendor.rl.policy import RandomPolicy
+
+                    self._bot_policy = RandomPolicy(seed=0)
+            else:
+                from splendor.rl.policy import RandomPolicy
+
+                self._bot_policy = RandomPolicy(seed=0)
+
+        try:
+            action = self._bot_policy.select_action(state, cur, valid_actions)
+        except Exception:
+            action = valid_actions[0]
+
+        self.game_screen.execute_external_action(action)
 
     def _draw(self):
         """Draw based on current state."""
@@ -171,6 +258,45 @@ class SplendorApp:
             text_rect = text.get_rect(center=rect.center)
             self.screen.blit(text, text_rect)
 
+        # Seat type selection (Human/Bot)
+        label2 = label_font.render("Human vs Bot:", True, TEXT_COLOR)
+        label2_rect = label2.get_rect(center=(WINDOW_WIDTH // 2, 425))
+        self.screen.blit(label2, label2_rect)
+
+        for seat in range(self.selected_players):
+            rect = self._get_seat_type_button_rect(seat)
+            is_hovered = rect.collidepoint(mouse_pos)
+            is_bot = self.seat_is_bot[seat]
+            color = BUTTON_HOVER if is_hovered else PANEL_COLOR
+            pygame.draw.rect(self.screen, color, rect, border_radius=10)
+            pygame.draw.rect(
+                self.screen,
+                HIGHLIGHT_COLOR if is_bot else (100, 100, 100),
+                rect,
+                3 if is_bot else 1,
+                border_radius=10,
+            )
+            seat_label = f"P{seat+1}: {'BOT' if is_bot else 'HUMAN'}"
+            text = self.renderer.font_small.render(seat_label, True, TEXT_COLOR)
+            text_rect = text.get_rect(center=rect.center)
+            self.screen.blit(text, text_rect)
+
+        # Bot policy toggle
+        policy_rect = self._get_policy_button_rect()
+        is_policy_hovered = policy_rect.collidepoint(mouse_pos)
+        pygame.draw.rect(
+            self.screen,
+            BUTTON_HOVER if is_policy_hovered else PANEL_COLOR,
+            policy_rect,
+            border_radius=10,
+        )
+        pygame.draw.rect(self.screen, (100, 100, 100), policy_rect, 1, border_radius=10)
+        policy_text = (
+            f"Bot policy: {'PPO (artifacts/splendor_ppo.zip)' if self.bot_policy_name == 'ppo' else 'Random'}"
+        )
+        t = self.renderer.font_small.render(policy_text, True, TEXT_COLOR)
+        self.screen.blit(t, t.get_rect(center=policy_rect.center))
+
         # Start button
         start_rect = self._get_start_button_rect()
         is_start_hovered = start_rect.collidepoint(mouse_pos)
@@ -196,7 +322,7 @@ class SplendorApp:
         ]
 
         inst_font = pygame.font.SysFont("Arial", 18)
-        y_offset = 600
+        y_offset = 665
         for line in instructions:
             color = HIGHLIGHT_COLOR if line.startswith("How") else (180, 180, 180)
             text = inst_font.render(line, True, color)
@@ -215,6 +341,5 @@ def main(skip_menu: bool = False, num_players: int = 2):
 
 
 if __name__ == "__main__":
-    # Start directly with 2 players for testing
-    main(skip_menu=True, num_players=2)
+    main(skip_menu=False, num_players=2)
 

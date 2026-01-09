@@ -6,7 +6,7 @@ import random
 from itertools import combinations
 from typing import Optional
 
-from splendor.data import load_cards_by_tier, load_nobles
+from splendor.data.loader import load_cards_by_tier, load_nobles
 from splendor.game.state import (
     GameConfig,
     GameState,

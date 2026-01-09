@@ -1,6 +1,6 @@
 """Tests for game data loading."""
 
-from splendor.data import load_cards, load_nobles, load_cards_by_tier
+from splendor.data.loader import load_cards, load_nobles, load_cards_by_tier
 from splendor.models.gems import GemType
 
 
