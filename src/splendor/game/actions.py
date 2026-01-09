@@ -30,12 +30,8 @@ class TakeThreeDifferentAction(BaseModel, frozen=True):
     """
 
     type: Literal[ActionType.TAKE_THREE_DIFFERENT] = ActionType.TAKE_THREE_DIFFERENT
-    gems: tuple[str, ...] = Field(
-        description="Gem types to take (1-3 different colors)"
-    )
-    return_gems: tuple[str, ...] = Field(
-        default=(), description="Gems to return if over 10 tokens"
-    )
+    gems: tuple[str, ...] = Field(description="Gem types to take (1-3 different colors)")
+    return_gems: tuple[str, ...] = Field(default=(), description="Gems to return if over 10 tokens")
 
 
 class TakeTwoSameAction(BaseModel, frozen=True):
@@ -50,9 +46,7 @@ class TakeTwoSameAction(BaseModel, frozen=True):
 
     type: Literal[ActionType.TAKE_TWO_SAME] = ActionType.TAKE_TWO_SAME
     gem: str = Field(description="Gem type to take 2 of")
-    return_gems: tuple[str, ...] = Field(
-        default=(), description="Gems to return if over 10 tokens"
-    )
+    return_gems: tuple[str, ...] = Field(default=(), description="Gems to return if over 10 tokens")
 
 
 class ReserveVisibleAction(BaseModel, frozen=True):
@@ -67,9 +61,7 @@ class ReserveVisibleAction(BaseModel, frozen=True):
 
     type: Literal[ActionType.RESERVE_VISIBLE] = ActionType.RESERVE_VISIBLE
     card_id: str = Field(description="ID of the visible card to reserve")
-    return_gems: tuple[str, ...] = Field(
-        default=(), description="Gems to return if over 10 tokens"
-    )
+    return_gems: tuple[str, ...] = Field(default=(), description="Gems to return if over 10 tokens")
 
 
 class ReserveFromDeckAction(BaseModel, frozen=True):
@@ -84,9 +76,7 @@ class ReserveFromDeckAction(BaseModel, frozen=True):
 
     type: Literal[ActionType.RESERVE_FROM_DECK] = ActionType.RESERVE_FROM_DECK
     tier: Literal[1, 2, 3] = Field(description="Tier of deck to reserve from")
-    return_gems: tuple[str, ...] = Field(
-        default=(), description="Gems to return if over 10 tokens"
-    )
+    return_gems: tuple[str, ...] = Field(default=(), description="Gems to return if over 10 tokens")
 
 
 class PurchaseVisibleAction(BaseModel, frozen=True):
@@ -132,23 +122,17 @@ Action = Annotated[
 
 
 # Helper functions to create actions
-def take_three(
-    gems: Sequence[str], return_gems: Sequence[str] = ()
-) -> TakeThreeDifferentAction:
+def take_three(gems: Sequence[str], return_gems: Sequence[str] = ()) -> TakeThreeDifferentAction:
     """Create a take-three-different action."""
     return TakeThreeDifferentAction(gems=tuple(gems), return_gems=tuple(return_gems))
 
 
-def take_two(
-    gem: str, return_gems: Sequence[str] = ()
-) -> TakeTwoSameAction:
+def take_two(gem: str, return_gems: Sequence[str] = ()) -> TakeTwoSameAction:
     """Create a take-two-same action."""
     return TakeTwoSameAction(gem=gem, return_gems=tuple(return_gems))
 
 
-def reserve_visible(
-    card_id: str, return_gems: Sequence[str] = ()
-) -> ReserveVisibleAction:
+def reserve_visible(card_id: str, return_gems: Sequence[str] = ()) -> ReserveVisibleAction:
     """Create a reserve-visible-card action."""
     return ReserveVisibleAction(card_id=card_id, return_gems=tuple(return_gems))
 
@@ -168,4 +152,3 @@ def purchase_visible(card_id: str) -> PurchaseVisibleAction:
 def purchase_reserved(card_id: str) -> PurchaseReservedAction:
     """Create a purchase-reserved-card action."""
     return PurchaseReservedAction(card_id=card_id)
-

@@ -51,6 +51,38 @@ On each turn, a player performs one action:
 pip install -e .
 ```
 
+Or with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv sync
+```
+
+## Development
+
+Install dev dependencies:
+
+```bash
+uv sync --extra dev
+```
+
+Run tests:
+
+```bash
+uv run pytest
+```
+
+Format code:
+
+```bash
+uv run ruff format .
+```
+
+Lint code:
+
+```bash
+uv run ruff check .
+```
+
 ## License
 
 MIT

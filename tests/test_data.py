@@ -58,4 +58,3 @@ class TestDataLoading:
         for card in cards:
             for gem_type, count in card.cost:
                 assert count >= 0
-

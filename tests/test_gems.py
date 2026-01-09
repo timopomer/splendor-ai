@@ -97,4 +97,3 @@ class TestGemCollection:
         items = dict(gems)
         assert items[GemType.DIAMOND] == 1
         assert items[GemType.SAPPHIRE] == 2
-

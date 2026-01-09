@@ -171,4 +171,3 @@ class TestWinCondition:
         new_state = state.check_winner()
         assert new_state.game_over
         assert new_state.winner == 0
-

@@ -89,4 +89,3 @@ class TestNoble:
         noble1 = Noble(id="same", requirements=GemCollection())
         noble2 = Noble(id="same", requirements=GemCollection(diamond=1))
         assert noble1 == noble2
-

@@ -137,4 +137,3 @@ class GemCollection(BaseModel, frozen=True):
             else:
                 normalized[key] = value
         return cls(**normalized)
-

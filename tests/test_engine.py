@@ -1,5 +1,7 @@
 """Tests for game engine."""
 
+import random
+
 import pytest
 
 from splendor.game.engine import GameEngine
@@ -166,7 +168,7 @@ class TestPurchaseCards:
         # Alternate turns to build up tokens for player 0
         # Turn 1: P0 takes gems
         engine.step(take_three(["diamond", "sapphire", "emerald"]))
-        # Turn 2: P1 takes gems  
+        # Turn 2: P1 takes gems
         engine.step(take_three(["ruby", "onyx", "diamond"]))
         # Turn 3: P0 takes gems
         engine.step(take_three(["diamond", "sapphire", "ruby"]))
@@ -180,7 +182,7 @@ class TestPurchaseCards:
         # Now it's player 0's turn - check if they can purchase
         state = engine.state
         assert state.current_player_idx == 0
-        
+
         valid = engine.get_valid_actions()
         purchase_actions = [a for a in valid if isinstance(a, PurchaseVisibleAction)]
 
@@ -201,9 +203,7 @@ class TestValidActions:
         assert len(actions) > 0
 
         # Should have take-three options
-        take_three_actions = [
-            a for a in actions if isinstance(a, TakeThreeDifferentAction)
-        ]
+        take_three_actions = [a for a in actions if isinstance(a, TakeThreeDifferentAction)]
         assert len(take_three_actions) > 0
 
         # Should have take-two options (bank has 4 of each)
@@ -218,8 +218,6 @@ class TestValidActions:
 class TestGameSimulation:
     def test_simulate_random_game(self):
         """Simulate a complete game with random valid moves."""
-        import random
-
         engine = GameEngine(num_players=2, seed=42)
         engine.reset()
         rng = random.Random(123)
@@ -231,7 +229,7 @@ class TestGameSimulation:
             actions = engine.get_valid_actions()
             if not actions:
                 break  # No valid moves (shouldn't happen normally)
-            
+
             action = rng.choice(actions)
             engine.step(action)
             moves += 1
@@ -246,8 +244,6 @@ class TestGameSimulation:
 
     def test_multiple_random_games(self):
         """Run several random games to ensure stability."""
-        import random
-
         for game_num in range(5):
             engine = GameEngine(num_players=2, seed=game_num)
             engine.reset()
@@ -266,4 +262,3 @@ class TestGameSimulation:
 
             # Just verify no crashes
             assert engine.state is not None
-

@@ -20,9 +20,7 @@ class Noble(BaseModel, frozen=True):
 
     id: str = Field(description="Unique identifier for the noble")
     points: int = Field(default=3, description="Victory points (always 3)")
-    requirements: GemCollection = Field(
-        description="Required card bonuses to attract this noble"
-    )
+    requirements: GemCollection = Field(description="Required card bonuses to attract this noble")
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -42,4 +40,3 @@ class Noble(BaseModel, frozen=True):
             and player_bonuses.ruby >= self.requirements.ruby
             and player_bonuses.onyx >= self.requirements.onyx
         )
-
