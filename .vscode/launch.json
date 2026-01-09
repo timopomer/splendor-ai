@@ -37,7 +37,54 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src"
             }
+        },
+        {
+            "name": "Web Backend (FastAPI)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "main:app",
+                "--reload",
+                "--port", "8000"
+            ],
+            "cwd": "${workspaceFolder}/web/backend",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "python": "${workspaceFolder}/.venv/bin/python"
+        },
+        {
+            "name": "Web Frontend (Vite)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/web/frontend",
+            "runtimeExecutable": "pnpm",
+            "runtimeArgs": ["dev"],
+            "console": "integratedTerminal",
+            "preLaunchTask": "Ensure Web Frontend Ready"
+        },
+        {
+            "name": "Playwright Tests (UI)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/web/e2e",
+            "runtimeExecutable": "pnpm",
+            "runtimeArgs": ["test:ui"],
+            "console": "integratedTerminal"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Web App (Backend + Frontend)",
+            "configurations": ["Web Backend (FastAPI)", "Web Frontend (Vite)"],
+            "stopAll": true,
+            "presentation": {
+                "hidden": false,
+                "group": "Web",
+                "order": 1
+            }
         }
     ]
 }
-

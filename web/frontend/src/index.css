@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-board: #1e3a2f;
+  --color-panel: #2d4a3e;
+}
+
+body {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  background: linear-gradient(135deg, #0f1c17 0%, #1e3a2f 50%, #0f1c17 100%);
+  min-height: 100vh;
+  color: #e8e8e8;
+}
+
+h1, h2, h3 {
+  font-family: 'Cinzel', serif;
+}
+
+/* Gem token styles */
+.gem-token {
+  @apply rounded-full flex items-center justify-center font-bold shadow-lg;
+  @apply transition-all duration-200;
+}
+
+.gem-token:hover:not(:disabled) {
+  @apply scale-110;
+}
+
+.gem-token.selected {
+  @apply ring-4 ring-highlight ring-offset-2 ring-offset-board scale-110;
+}
+
+/* Card styles */
+.card {
+  @apply rounded-lg shadow-xl overflow-hidden;
+  @apply transition-all duration-200;
+  background: linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.2) 100%);
+}
+
+.card:hover:not(.disabled) {
+  @apply -translate-y-1 shadow-2xl;
+}
+
+.card.selected {
+  @apply ring-4 ring-highlight;
+}
+
+.card.affordable {
+  @apply ring-2 ring-green-400/50;
+}
+
+/* Noble tile styles */
+.noble-tile {
+  @apply rounded-lg shadow-lg p-2;
+  background: linear-gradient(180deg, #4a1942 0%, #2d1028 100%);
+}
+
+/* Button styles */
+.btn {
+  @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply bg-emerald hover:bg-green-600 text-white;
+}
+
+.btn-secondary {
+  @apply bg-panel hover:bg-gray-600 text-white border border-gray-600;
+}
+
+/* Action log scrollbar */
+.action-log::-webkit-scrollbar {
+  width: 6px;
+}
+
+.action-log::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.action-log::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+/* Animations */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(74, 222, 128, 0.8);
+  }
+}
+
+.your-turn {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
