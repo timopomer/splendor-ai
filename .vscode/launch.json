@@ -12,6 +12,22 @@
             }
         },
         {
+            "name": "RL TUI (single process)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/rl_tui.py",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "args": [
+                "--reward", "shaped",
+                "--arch", "gpu-heavy"
+            ]
+        },
+        {
             "name": "Run pytest",
             "type": "debugpy",
             "request": "launch",
