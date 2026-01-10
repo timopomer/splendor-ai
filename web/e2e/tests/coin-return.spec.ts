@@ -28,17 +28,11 @@ const TEST_ROOMS_CONFIG = {
   ],
 };
 
-// Extend the test with TEST_ROOMS configuration
-const test = base.extend({
-  // This fixture runs before each worker to set up the TEST_ROOMS env var
-  testRooms: [async ({}, use) => {
-    // Set environment variable for this test suite - the backend fixture will pick it up
-    process.env.TEST_ROOMS = JSON.stringify(TEST_ROOMS_CONFIG);
-    await use(undefined);
-    // Clean up after test
-    delete process.env.TEST_ROOMS;
-  }, { scope: 'worker', auto: true }],
-});
+// Set TEST_ROOMS before importing the backend fixture
+process.env.TEST_ROOMS = JSON.stringify(TEST_ROOMS_CONFIG);
+
+// Use the base test directly
+const test = base;
 
 const KNOWN_TOKENS: Record<string, string> = {
   TEST8: 'test-token-8coins-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
@@ -73,17 +67,15 @@ async function navigateToTestGame(page: Page, setup: TestGameSetup) {
   // Listen for console messages
   page.on('console', msg => console.log(`BROWSER: ${msg.text()}`));
 
-  // First navigate to a page to set localStorage
+  // First navigate to a page to set sessionStorage
   await page.goto('/');
 
-  // Store session in localStorage
+  // Store session in sessionStorage
   await page.evaluate(
     ({ roomId, token }) => {
       console.log(`Setting session: roomId=${roomId}, token=${token.substring(0, 10)}...`);
-      localStorage.setItem(
-        'splendor_session',
-        JSON.stringify({ roomId, token, seat: 0 })
-      );
+      sessionStorage.setItem('splendor_token', token);
+      sessionStorage.setItem('splendor_room', roomId);
     },
     { roomId: setup.roomId, token: setup.token }
   );
@@ -91,12 +83,13 @@ async function navigateToTestGame(page: Page, setup: TestGameSetup) {
   // Navigate to game page
   await page.goto(`/game/${setup.roomId}`);
 
-  // Debug: wait a moment and check current URL and localStorage
+  // Debug: wait a moment and check current URL and sessionStorage
   await page.waitForTimeout(2000);
   const currentUrl = page.url();
   const storedSession = await page.evaluate(() => {
-    const stored = localStorage.getItem('splendor_session');
-    return stored ? JSON.parse(stored) : null;
+    const token = sessionStorage.getItem('splendor_token');
+    const roomId = sessionStorage.getItem('splendor_room');
+    return token && roomId ? { token, roomId } : null;
   });
   console.log(`Current URL: ${currentUrl}`);
   console.log(`Stored session: ${JSON.stringify(storedSession)}`);

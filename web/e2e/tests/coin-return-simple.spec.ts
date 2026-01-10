@@ -34,17 +34,11 @@ const KNOWN_TOKENS = {
   TEST10: 'test-token-10coins-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
 };
 
-// Extend the test with TEST_ROOMS configuration
-const test = base.extend({
-  // This fixture runs before each worker to set up the TEST_ROOMS env var
-  testRooms: [async ({}, use) => {
-    // Set environment variable for this test suite - the backend fixture will pick it up
-    process.env.TEST_ROOMS = JSON.stringify(TEST_ROOMS_CONFIG);
-    await use(undefined);
-    // Clean up after test
-    delete process.env.TEST_ROOMS;
-  }, { scope: 'worker', auto: true }],
-});
+// Set TEST_ROOMS before importing the backend fixture
+process.env.TEST_ROOMS = JSON.stringify(TEST_ROOMS_CONFIG);
+
+// Use the base test directly
+const test = base;
 
 async function navigateToGame(page: Page, roomId: keyof typeof KNOWN_TOKENS) {
   const token = KNOWN_TOKENS[roomId];
@@ -53,10 +47,8 @@ async function navigateToGame(page: Page, roomId: keyof typeof KNOWN_TOKENS) {
   await page.goto('/');
   await page.evaluate(
     ({ roomId, token }) => {
-      localStorage.setItem(
-        'splendor_session',
-        JSON.stringify({ roomId, token, seat: 0 })
-      );
+      sessionStorage.setItem('splendor_token', token);
+      sessionStorage.setItem('splendor_room', roomId);
     },
     { roomId, token }
   );
