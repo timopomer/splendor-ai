@@ -7,12 +7,12 @@ const __dirname = dirname(__filename);
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: true,
+  fullyParallel: true, // Now safe to run in parallel with isolated backends
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 4 : 2, // Multiple workers now supported
   reporter: 'html',
-  
+
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
@@ -26,21 +26,11 @@ export default defineConfig({
     },
   ],
 
-  webServer: [
-    {
-      command: 'cd ../../ && uv run --extra web --extra rl -- python -m uvicorn web.backend.main:app --port 8000',
-      port: 8000,
-      reuseExistingServer: !process.env.CI,
-      cwd: __dirname,
-      env: {
-        PYTHONPATH: '../../src',
-      },
-    },
-    {
-      command: 'cd ../frontend && pnpm dev',
-      port: 5173,
-      reuseExistingServer: !process.env.CI,
-      cwd: __dirname,
-    },
-  ],
+  // Only start the frontend server globally - backends are per-worker
+  webServer: {
+    command: 'cd ../frontend && pnpm dev',
+    port: 5173,
+    reuseExistingServer: !process.env.CI,
+    cwd: __dirname,
+  },
 });

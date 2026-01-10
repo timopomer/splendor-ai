@@ -44,6 +44,9 @@ export interface Noble {
 
 export interface Player {
   id: number;
+  name: string;
+  emoji: string;
+  is_bot: boolean;
   tokens: GemCollection;
   bonuses: GemCollection;
   points: number;
@@ -73,12 +76,35 @@ export interface GameState {
   players: Player[];
 }
 
+// Model types
+export interface NetworkInfo {
+  policy: string;
+  architecture: number[];
+  observation_dim: number;
+  action_space: string;
+}
+
+export interface ModelMetadata {
+  id: string;
+  name: string;
+  description: string;
+  type: 'conventional' | 'neural';
+  algorithm: string | null;
+  network: NetworkInfo | null;
+  training_steps: number | null;
+  training_games: number | null;
+  win_rate_vs_random: number | null;
+  icon: string;  // 🤖 for conventional, 🧠 for neural
+}
+
 // Room types
 export interface SeatInfo {
   seat: number;
   player_name: string | null;
+  player_emoji: string | null;
   is_bot: boolean;
-  bot_policy: string | null;
+  model_id: string | null;
+  model_icon: string | null;
   is_connected: boolean;
 }
 

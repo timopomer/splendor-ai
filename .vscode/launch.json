@@ -44,11 +44,11 @@
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "main:app",
+                "backend.main:app",
                 "--reload",
                 "--port", "8000"
             ],
-            "cwd": "${workspaceFolder}/web/backend",
+            "cwd": "${workspaceFolder}/web",
             "console": "integratedTerminal",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src"

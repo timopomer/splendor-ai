@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import sys
+import json
+import os
+import uuid
 from pathlib import Path
 
 # Add src to path for splendor imports
@@ -12,7 +15,11 @@ from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
+# Use expected instance ID from env, or generate a random one
+INSTANCE_ID = os.getenv("EXPECTED_INSTANCE_ID") or str(uuid.uuid4())
+
 from .rooms import room_manager, Room
+from .models import model_registry
 from .schemas import (
     CreateRoomRequest,
     CreateRoomResponse,
@@ -24,6 +31,9 @@ from .schemas import (
     GameStateSchema,
     SubmitActionRequest,
     SubmitActionResponse,
+    ModelsListResponse,
+    ModelMetadataSchema,
+    NetworkInfoSchema,
 )
 
 app = FastAPI(
@@ -40,6 +50,34 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def load_test_rooms():
+    """Load test rooms from TEST_ROOMS env var (JSON string)."""
+    print(f"🔧 Backend Instance ID: {INSTANCE_ID}")
+
+    test_rooms_json = os.getenv("TEST_ROOMS")
+    if not test_rooms_json:
+        print("⚠️  No TEST_ROOMS configured")
+        return
+
+    try:
+        config = json.loads(test_rooms_json)
+        print(f"📋 Loading {len(config.get('rooms', []))} test rooms...")
+
+        for room_config in config.get("rooms", []):
+            room, token, seat = room_manager.create_test_room(
+                room_id=room_config["room_id"],
+                player_name=room_config["player_name"],
+                player_emoji=room_config.get("player_emoji", "🧪"),
+                player_tokens=room_config.get("player_tokens", 0),
+                token=room_config.get("token"),
+            )
+            print(f"  ✓ Loaded test room {room.room_id}: token={token}, tokens={room_config.get('player_tokens', 0)}")
+
+    except Exception as e:
+        print(f"✗ Error loading test rooms: {e}")
 
 
 def get_room_or_404(room_id: str) -> Room:
@@ -65,7 +103,35 @@ def get_player_seat(room: Room, authorization: Optional[str]) -> int:
 @app.get("/")
 async def root():
     """Health check."""
-    return {"status": "ok", "game": "splendor"}
+    return {"status": "ok", "game": "splendor", "instance_id": INSTANCE_ID}
+
+
+@app.get("/models", response_model=ModelsListResponse)
+async def list_models():
+    """List available bot models."""
+    models = []
+    for m in model_registry.list_models():
+        network = None
+        if m.network:
+            network = NetworkInfoSchema(
+                policy=m.network.policy,
+                architecture=m.network.architecture,
+                observation_dim=m.network.observation_dim,
+                action_space=m.network.action_space,
+            )
+        models.append(ModelMetadataSchema(
+            id=m.id,
+            name=m.name,
+            description=m.description,
+            type=m.type,
+            algorithm=m.algorithm,
+            network=network,
+            training_steps=m.training_steps,
+            training_games=m.training_games,
+            win_rate_vs_random=m.win_rate_vs_random,
+            icon=m.icon,
+        ))
+    return ModelsListResponse(models=models)
 
 
 @app.post("/rooms", response_model=CreateRoomResponse)
@@ -74,6 +140,7 @@ async def create_room(request: CreateRoomRequest):
     room, token, seat = room_manager.create_room(
         num_players=request.num_players,
         player_name=request.player_name,
+        player_emoji=request.player_emoji,
     )
     return CreateRoomResponse(
         room_id=room.room_id,
@@ -87,16 +154,22 @@ async def get_room_info(room_id: str):
     """Get room info for lobby display."""
     room = get_room_or_404(room_id)
     
-    seats = [
-        SeatInfo(
+    seats = []
+    for i, s in enumerate(room.seats):
+        model_icon = None
+        if s.is_bot:
+            model = model_registry.get_model(s.model_id)
+            model_icon = model.icon if model else "🤖"
+        
+        seats.append(SeatInfo(
             seat=i,
             player_name=s.player_name,
+            player_emoji=s.player_emoji,
             is_bot=s.is_bot,
-            bot_policy=s.bot_policy if s.is_bot else None,
+            model_id=s.model_id if s.is_bot else None,
+            model_icon=model_icon,
             is_connected=s.is_connected,
-        )
-        for i, s in enumerate(room.seats)
-    ]
+        ))
     
     return RoomInfoSchema(
         room_id=room.room_id,
@@ -116,7 +189,7 @@ async def join_room(room_id: str, request: JoinRoomRequest):
         raise HTTPException(status_code=400, detail="Game already started")
     
     try:
-        token, seat = room.add_player(request.player_name)
+        token, seat = room.add_player(request.player_name, request.player_emoji)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
@@ -136,8 +209,14 @@ async def configure_seat(
     if seat != room.host_seat:
         raise HTTPException(status_code=403, detail="Only host can configure seats")
     
+    # Validate model exists
+    if request.is_bot and request.model_id:
+        model = model_registry.get_model(request.model_id)
+        if model is None:
+            raise HTTPException(status_code=400, detail=f"Unknown model: {request.model_id}")
+    
     try:
-        room.configure_seat(request.seat, request.is_bot, request.bot_policy)
+        room.configure_seat(request.seat, request.is_bot, request.model_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     
@@ -190,7 +269,7 @@ async def submit_action(
     """Submit a game action."""
     room = get_room_or_404(room_id)
     seat = get_player_seat(room, authorization)
-    
+
     try:
         room.submit_action(seat, request.action)
         # Execute bot turns after human move

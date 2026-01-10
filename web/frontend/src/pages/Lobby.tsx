@@ -8,10 +8,19 @@ import {
   useJoinRoom,
   useConfigureSeat,
   useStartGame,
+  useModels,
 } from '../api/client';
-import type { SeatInfo } from '../types/game';
+import type { SeatInfo, ModelMetadata } from '../types/game';
 
 type LobbyMode = 'menu' | 'create' | 'join' | 'waiting';
+
+// Available player emojis
+const PLAYER_EMOJIS = [
+  '😎', '🦊', '🐺', '🦁', '🐯', '🐻', '🐼', '🐨',
+  '🦄', '🐲', '🦅', '🦉', '🐢', '🦋', '🌟', '⚡',
+  '🔥', '💎', '👑', '🎭', '🎪', '🎯', '🎲', '🃏',
+  '🌸', '🌺', '🍀', '🌙', '☀️', '❄️', '🌊', '🏔️',
+];
 
 export function Lobby() {
   const navigate = useNavigate();
@@ -21,6 +30,7 @@ export function Lobby() {
   // Form state
   const [mode, setMode] = useState<LobbyMode>(joinRoomId ? 'join' : 'menu');
   const [playerName, setPlayerName] = useState('');
+  const [playerEmoji, setPlayerEmoji] = useState('😎');
   const [numPlayers, setNumPlayers] = useState<2 | 3 | 4>(2);
   const [joinCode, setJoinCode] = useState(joinRoomId || '');
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +42,7 @@ export function Lobby() {
   
   // Queries and mutations
   const { data: roomInfo } = useRoomInfo(roomId, mode === 'waiting');
+  const { data: models } = useModels();
   const createRoomMutation = useCreateRoom();
   const joinRoomMutation = useJoinRoom();
   const configureSeatMutation = useConfigureSeat(roomId || '', token || '');
@@ -50,7 +61,7 @@ export function Lobby() {
     
     setError(null);
     createRoomMutation.mutate(
-      { numPlayers, playerName: playerName.trim() },
+      { numPlayers, playerName: playerName.trim(), playerEmoji },
       {
         onSuccess: (response) => {
           storeSession(response.player_token, response.room_id);
@@ -80,7 +91,7 @@ export function Lobby() {
     setError(null);
     
     joinRoomMutation.mutate(
-      { roomId: code, playerName: playerName.trim() },
+      { roomId: code, playerName: playerName.trim(), playerEmoji },
       {
         onSuccess: (response) => {
           storeSession(response.player_token, code);
@@ -96,12 +107,11 @@ export function Lobby() {
     );
   };
 
-  const handleToggleBot = (seat: number) => {
+  const handleConfigureSeat = (seat: number, isBot: boolean, modelId?: string) => {
     if (!roomInfo) return;
     
-    const seatInfo = roomInfo.seats[seat];
     configureSeatMutation.mutate(
-      { seat, isBot: !seatInfo.is_bot },
+      { seat, isBot, modelId: modelId || 'random' },
       {
         onError: (err) => {
           setError(err instanceof Error ? err.message : 'Failed to configure seat');
@@ -164,15 +174,46 @@ export function Lobby() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Your Name</label>
-                <input
-                  type="text"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  className="w-full bg-board border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-highlight"
-                  placeholder="Enter your name"
-                  maxLength={20}
-                  data-testid="player-name"
-                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = PLAYER_EMOJIS.indexOf(playerEmoji);
+                      const next = (current + 1) % PLAYER_EMOJIS.length;
+                      setPlayerEmoji(PLAYER_EMOJIS[next]);
+                    }}
+                    className="w-12 h-12 text-2xl bg-board border border-gray-600 rounded-lg hover:border-highlight transition-colors flex items-center justify-center"
+                    data-testid="emoji-picker"
+                    title="Click to change emoji"
+                  >
+                    {playerEmoji}
+                  </button>
+                  <input
+                    type="text"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    className="flex-1 bg-board border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-highlight"
+                    placeholder="Enter your name"
+                    maxLength={20}
+                    data-testid="player-name"
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {PLAYER_EMOJIS.slice(0, 16).map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setPlayerEmoji(emoji)}
+                      className={`w-8 h-8 text-lg rounded transition-all ${
+                        playerEmoji === emoji
+                          ? 'bg-highlight/30 scale-110'
+                          : 'hover:bg-gray-700'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
               
               <div>
@@ -227,15 +268,46 @@ export function Lobby() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm text-gray-400 mb-1">Your Name</label>
-                <input
-                  type="text"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  className="w-full bg-board border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-highlight"
-                  placeholder="Enter your name"
-                  maxLength={20}
-                  data-testid="player-name"
-                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = PLAYER_EMOJIS.indexOf(playerEmoji);
+                      const next = (current + 1) % PLAYER_EMOJIS.length;
+                      setPlayerEmoji(PLAYER_EMOJIS[next]);
+                    }}
+                    className="w-12 h-12 text-2xl bg-board border border-gray-600 rounded-lg hover:border-highlight transition-colors flex items-center justify-center"
+                    data-testid="emoji-picker"
+                    title="Click to change emoji"
+                  >
+                    {playerEmoji}
+                  </button>
+                  <input
+                    type="text"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    className="flex-1 bg-board border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-highlight"
+                    placeholder="Enter your name"
+                    maxLength={20}
+                    data-testid="player-name"
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {PLAYER_EMOJIS.slice(0, 16).map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setPlayerEmoji(emoji)}
+                      className={`w-8 h-8 text-lg rounded transition-all ${
+                        playerEmoji === emoji
+                          ? 'bg-highlight/30 scale-110'
+                          : 'hover:bg-gray-700'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
               
               <div>
@@ -299,7 +371,8 @@ export function Lobby() {
                   seat={seat}
                   isMe={idx === mySeat}
                   isHost={isHost || false}
-                  onToggleBot={() => handleToggleBot(idx)}
+                  models={models || []}
+                  onConfigureSeat={(isBot, modelId) => handleConfigureSeat(idx, isBot, modelId)}
                 />
               ))}
             </div>
@@ -333,56 +406,160 @@ function SeatRow({
   seat,
   isMe,
   isHost,
-  onToggleBot,
+  models,
+  onConfigureSeat,
 }: {
   seat: SeatInfo;
   isMe: boolean;
   isHost: boolean;
-  onToggleBot: () => void;
+  models: ModelMetadata[];
+  onConfigureSeat: (isBot: boolean, modelId?: string) => void;
 }) {
+  const [showModelSelect, setShowModelSelect] = useState(false);
   const isEmpty = !seat.player_name && !seat.is_bot;
+  
+  const handleAddBot = (modelId: string) => {
+    onConfigureSeat(true, modelId);
+    setShowModelSelect(false);
+  };
+  
+  const handleRemoveBot = () => {
+    onConfigureSeat(false);
+    setShowModelSelect(false);
+  };
+  
+  // Find current model for display
+  const currentModel = models.find(m => m.id === seat.model_id);
   
   return (
     <div
-      className={`flex items-center justify-between p-3 rounded-lg ${
+      className={`p-3 rounded-lg ${
         isMe ? 'bg-highlight/20 border border-highlight/50' : 'bg-board'
       }`}
       data-testid={`seat-${seat.seat}`}
     >
-      <div className="flex items-center gap-3">
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-            seat.is_bot
-              ? 'bg-purple-600'
-              : seat.player_name
-              ? 'bg-highlight text-board'
-              : 'bg-gray-600'
-          }`}
-        >
-          {seat.is_bot ? '🤖' : seat.player_name?.[0]?.toUpperCase() || '?'}
-        </div>
-        <div>
-          <div className="font-medium">
-            {seat.is_bot ? `Bot ${seat.seat + 1}` : seat.player_name || 'Empty'}
-            {isMe && <span className="text-highlight ml-2">(You)</span>}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
+              seat.is_bot
+                ? 'bg-gradient-to-br from-violet-600 to-purple-700'
+                : seat.player_name
+                ? 'bg-highlight/20 border-2 border-highlight/50'
+                : 'bg-gray-600'
+            }`}
+          >
+            {seat.player_emoji || (seat.is_bot ? (seat.model_icon || '🧠') : '?')}
           </div>
-          {seat.is_bot && (
-            <div className="text-xs text-gray-400">
-              {seat.bot_policy === 'ppo' ? 'PPO AI' : 'Random'}
+          <div>
+            <div className="font-medium">
+              {seat.player_name || 'Empty'}
+              {isMe && <span className="text-highlight ml-2">(You)</span>}
             </div>
-          )}
+            {seat.is_bot && currentModel && (
+              <div className="text-xs text-gray-400 flex items-center gap-1">
+                {currentModel.type === 'neural' ? (
+                  <>
+                    <span className="text-violet-400">{currentModel.algorithm}</span>
+                    {currentModel.training_steps && (
+                      <span>• {formatSteps(currentModel.training_steps)} steps</span>
+                    )}
+                  </>
+                ) : (
+                  <span>{currentModel.description}</span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
+        
+        {isHost && !isMe && (
+          <div className="relative">
+            {seat.is_bot ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowModelSelect(!showModelSelect)}
+                  className="btn btn-secondary text-sm py-1"
+                  data-testid={`change-model-${seat.seat}`}
+                >
+                  Change
+                </button>
+                <button
+                  onClick={handleRemoveBot}
+                  className="btn btn-secondary text-sm py-1 text-red-400 hover:text-red-300"
+                  data-testid={`remove-bot-${seat.seat}`}
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowModelSelect(!showModelSelect)}
+                className="btn btn-secondary text-sm py-1"
+                data-testid={`toggle-bot-${seat.seat}`}
+              >
+                {isEmpty ? 'Add Bot' : 'Replace'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
       
-      {isHost && !isMe && (
-        <button
-          onClick={onToggleBot}
-          className="btn btn-secondary text-sm py-1"
-          data-testid={`toggle-bot-${seat.seat}`}
-        >
-          {isEmpty ? 'Add Bot' : seat.is_bot ? 'Remove Bot' : 'Replace with Bot'}
-        </button>
+      {/* Model Selection Dropdown */}
+      {showModelSelect && isHost && !isMe && (
+        <div className="mt-3 pt-3 border-t border-gray-700">
+          <div className="text-sm text-gray-400 mb-2">Select AI Model:</div>
+          <div className="space-y-2">
+            {models.map((model) => (
+              <button
+                key={model.id}
+                onClick={() => handleAddBot(model.id)}
+                className={`w-full text-left p-3 rounded-lg transition-colors ${
+                  seat.model_id === model.id
+                    ? 'bg-violet-600/30 border border-violet-500'
+                    : 'bg-panel hover:bg-gray-700 border border-transparent'
+                }`}
+                data-testid={`select-model-${model.id}`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">{model.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium flex items-center gap-2">
+                      {model.name}
+                      {model.type === 'neural' && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-violet-600/50 text-violet-200">
+                          {model.algorithm}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {model.description}
+                    </div>
+                    {model.type === 'neural' && model.network && (
+                      <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-x-3">
+                        <span>Network: {model.network.architecture.join('×')}</span>
+                        {model.training_steps && (
+                          <span>Steps: {formatSteps(model.training_steps)}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
+}
+
+function formatSteps(steps: number): string {
+  if (steps >= 1_000_000) {
+    return `${(steps / 1_000_000).toFixed(1)}M`;
+  }
+  if (steps >= 1_000) {
+    return `${(steps / 1_000).toFixed(0)}K`;
+  }
+  return steps.toString();
 }

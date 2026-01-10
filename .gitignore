@@ -208,3 +208,19 @@ __marimo__/
 
 # Training artifacts (models, checkpoints, progress logs)
 artifacts/
+
+# Playwright
+test-results/
+**/test-results/
+playwright-report/
+**/playwright-report/
+playwright/.cache/
+**/playwright/.cache/
+
+# Internal markdown files (not at root level)
+**/*.md
+!/*.md
+!README.md
+
+# TypeScript build info
+*.tsbuildinfo

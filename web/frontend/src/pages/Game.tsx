@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import {
   getStoredSession,
@@ -8,7 +8,7 @@ import {
 } from '../api/client';
 import { GameBoard } from '../components/GameBoard';
 import type { Card, GemType, GameAction } from '../types/game';
-import { canAfford } from '../types/game';
+import { canAfford, totalTokens } from '../types/game';
 
 export function Game() {
   const params = useParams({ from: '/game/$roomId' });
@@ -20,10 +20,12 @@ export function Game() {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [selectedDeckTier, setSelectedDeckTier] = useState<number | null>(null);
   const [selectedReservedCard, setSelectedReservedCard] = useState<Card | null>(null);
+  const [returnGems, setReturnGems] = useState<GemType[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
   
   // Redirect if no session
   if (!session || session.roomId !== params.roomId) {
+    console.log('Redirect logic:', { session, paramsRoomId: params.roomId, match: session?.roomId === params.roomId });
     navigate({ to: '/room/$roomId', params: { roomId: params.roomId } });
     return null;
   }
@@ -42,28 +44,30 @@ export function Game() {
     setSelectedCard(null);
     setSelectedDeckTier(null);
     setSelectedReservedCard(null);
+    setReturnGems([]);
     setActionError(null);
   };
   
   // Handle gem click
   const handleGemClick = (gem: GemType) => {
     if (!state?.is_your_turn) return;
-    
+
     // Clear card selections when selecting gems
     setSelectedCard(null);
     setSelectedDeckTier(null);
     setSelectedReservedCard(null);
+    setReturnGems([]);
     setActionError(null);
-    
+
     setSelectedGems((prev) => {
       const count = prev.filter((g) => g === gem).length;
       const bank = state.bank;
-      
+
       // If already selected twice, or clicking would make invalid, remove
       if (count >= 2) {
         return prev.filter((g) => g !== gem);
       }
-      
+
       // If clicking same gem that's selected once
       if (count === 1) {
         // Can only take 2 same if it's our only selection and bank has 4+
@@ -73,15 +77,15 @@ export function Game() {
         // Otherwise deselect
         return prev.filter((g) => g !== gem);
       }
-      
+
       // Adding new gem
       if (prev.length >= 3) return prev;
-      
+
       // If we have 2 same selected, clear and start fresh
       if (prev.length === 2 && prev[0] === prev[1]) {
         return [gem];
       }
-      
+
       return [...prev, gem];
     });
   };
@@ -93,6 +97,7 @@ export function Game() {
     setSelectedGems([]);
     setSelectedDeckTier(null);
     setSelectedReservedCard(null);
+    setReturnGems([]);
     setActionError(null);
     
     setSelectedCard((prev) => prev?.id === card.id ? null : card);
@@ -105,6 +110,7 @@ export function Game() {
     setSelectedGems([]);
     setSelectedCard(null);
     setSelectedReservedCard(null);
+    setReturnGems([]);
     setActionError(null);
     
     setSelectedDeckTier((prev) => prev === tier ? null : tier);
@@ -117,6 +123,7 @@ export function Game() {
     setSelectedGems([]);
     setSelectedCard(null);
     setSelectedDeckTier(null);
+    setReturnGems([]);
     setActionError(null);
     
     setSelectedReservedCard((prev) => prev?.id === card.id ? null : card);
@@ -169,6 +176,77 @@ export function Game() {
     if (reservedCount >= 3) return false;
     return selectedCard !== null || selectedDeckTier !== null;
   })();
+
+  // Calculate if we need to return gems
+  const needsReturnGems = useMemo(() => {
+    if (!state || !state.is_your_turn) return false;
+    const player = state.players[0];
+    const currentTokens = totalTokens(player.tokens);
+    
+    // Check for taking gems
+    if (selectedGems.length > 0) {
+      const tokensAfterTake = currentTokens + selectedGems.length;
+      const needsReturn = tokensAfterTake > 10;
+      return needsReturn;
+    }
+    
+    // Check for reserving (might get gold)
+    if ((selectedCard || selectedDeckTier) && canReserve) {
+      const goldAvailable = state.bank.gold > 0;
+      const tokensAfterReserve = currentTokens + (goldAvailable ? 1 : 0);
+      return tokensAfterReserve > 10;
+    }
+    
+    return false;
+  }, [state, selectedGems.length, selectedCard, selectedDeckTier, canReserve]);
+
+  const requiredReturnCount = useMemo(() => {
+    if (!state || !needsReturnGems) return 0;
+    const player = state.players[0];
+    const currentTokens = totalTokens(player.tokens);
+    
+    if (selectedGems.length > 0) {
+      return currentTokens + selectedGems.length - 10;
+    }
+    
+    if ((selectedCard || selectedDeckTier) && canReserve) {
+      const goldAvailable = state.bank.gold > 0;
+      const tokensAfterReserve = currentTokens + (goldAvailable ? 1 : 0);
+      return tokensAfterReserve - 10;
+    }
+    
+    return 0;
+  }, [state, needsReturnGems, selectedGems.length, selectedCard, selectedDeckTier, canReserve]);
+
+  // Handle return gem click
+  const handleReturnGemClick = (gem: GemType) => {
+    if (!state) return;
+    const player = state.players[0];
+
+    setReturnGems((prev) => {
+      const count = prev.filter((g) => g === gem).length;
+      const playerCount = player.tokens[gem];
+      const takingCount = selectedGems.filter((g) => g === gem).length;
+      const totalAvailable = playerCount + takingCount;
+
+      // If already selected as many as we'll have total, toggle off (remove all of this gem)
+      if (count >= totalAvailable) {
+        return prev.filter((g) => g !== gem);
+      }
+
+      // If clicking when already at required count, replace with this gem type
+      if (prev.length >= requiredReturnCount) {
+        // If we already have some of this gem type selected, add one more (replacing another gem)
+        const otherGems = prev.filter((g) => g !== gem);
+        if (otherGems.length < requiredReturnCount && count < totalAvailable) {
+          return [...otherGems, gem];
+        }
+        return prev;
+      }
+
+      return [...prev, gem];
+    });
+  };
   
   // Action handlers
   const executeAction = (action: GameAction) => {
@@ -190,17 +268,26 @@ export function Game() {
   const handleTakeGems = () => {
     if (!canTakeGems) return;
     
+    // Check if we need to return gems
+    if (needsReturnGems && returnGems.length !== requiredReturnCount) {
+      setActionError(`Please select ${requiredReturnCount} gem(s) to return`);
+      return;
+    }
+    
     const unique = new Set(selectedGems);
+    const returnGemsArray = needsReturnGems ? returnGems : undefined;
     
     if (selectedGems.length === 2 && selectedGems[0] === selectedGems[1]) {
       executeAction({
         type: 'take_two_same',
         gem: selectedGems[0],
+        return_gems: returnGemsArray,
       });
     } else {
       executeAction({
         type: 'take_three_different',
         gems: Array.from(unique),
+        return_gems: returnGemsArray,
       });
     }
   };
@@ -220,15 +307,25 @@ export function Game() {
   };
   
   const handleReserveCard = () => {
+    // Check if we need to return gems
+    if (needsReturnGems && returnGems.length !== requiredReturnCount) {
+      setActionError(`Please select ${requiredReturnCount} gem(s) to return`);
+      return;
+    }
+    
+    const returnGemsArray = needsReturnGems ? returnGems : undefined;
+    
     if (selectedCard) {
       executeAction({
         type: 'reserve_visible',
         card_id: selectedCard.id,
+        return_gems: returnGemsArray,
       });
     } else if (selectedDeckTier) {
       executeAction({
         type: 'reserve_from_deck',
         tier: selectedDeckTier as 1 | 2 | 3,
+        return_gems: returnGemsArray,
       });
     }
   };
@@ -275,10 +372,14 @@ export function Game() {
         selectedCard={selectedCard}
         selectedDeckTier={selectedDeckTier}
         selectedReservedCard={selectedReservedCard}
+        returnGems={returnGems}
+        needsReturnGems={needsReturnGems}
+        requiredReturnCount={requiredReturnCount}
         onGemClick={handleGemClick}
         onCardClick={handleCardClick}
         onDeckClick={handleDeckClick}
         onReservedClick={handleReservedClick}
+        onReturnGemClick={handleReturnGemClick}
         onTakeGems={handleTakeGems}
         onBuyCard={handleBuyCard}
         onReserveCard={handleReserveCard}
