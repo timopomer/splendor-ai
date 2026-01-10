@@ -19,7 +19,9 @@ from splendor.game.actions import (
     PurchaseReservedAction,
 )
 from splendor.models.gems import GemType
-from splendor.rl.policy import Policy, RandomPolicy
+from splendor.rl.policy import Policy
+
+from .models import model_registry
 
 from .schemas import (
     GameStateSchema,
@@ -48,9 +50,10 @@ def generate_player_token() -> str:
 class Seat:
     """A seat in a room."""
     player_name: Optional[str] = None
+    player_emoji: Optional[str] = None  # Player's chosen emoji
     player_token: Optional[str] = None
     is_bot: bool = False
-    bot_policy: str = "random"
+    model_id: str = "random"  # Model ID from registry
     is_connected: bool = False
 
 
@@ -77,18 +80,19 @@ class Room:
                 return i
         return None
 
-    def add_player(self, name: str) -> tuple[str, int]:
+    def add_player(self, name: str, emoji: str = "👤") -> tuple[str, int]:
         """Add a player to the next available seat. Returns (token, seat_index)."""
         for i, seat in enumerate(self.seats):
             if seat.player_name is None and not seat.is_bot:
                 token = generate_player_token()
                 seat.player_name = name
+                seat.player_emoji = emoji
                 seat.player_token = token
                 seat.is_connected = True
                 return token, i
         raise ValueError("No available seats")
 
-    def configure_seat(self, seat: int, is_bot: bool, bot_policy: str = "random"):
+    def configure_seat(self, seat: int, is_bot: bool, model_id: str = "random"):
         """Configure a seat as bot or human."""
         if seat < 0 or seat >= len(self.seats):
             raise ValueError(f"Invalid seat {seat}")
@@ -96,9 +100,14 @@ class Room:
             raise ValueError("Cannot change seats after game started")
         
         self.seats[seat].is_bot = is_bot
-        self.seats[seat].bot_policy = bot_policy
+        self.seats[seat].model_id = model_id
         if is_bot:
-            self.seats[seat].player_name = f"Bot {seat + 1}"
+            # Get model name and icon for display
+            model = model_registry.get_model(model_id)
+            model_name = model.name if model else "Bot"
+            model_icon = model.icon if model else "🤖"
+            self.seats[seat].player_name = f"{model_name}"
+            self.seats[seat].player_emoji = model_icon
             self.seats[seat].player_token = None
             self.seats[seat].is_connected = False
 
@@ -120,10 +129,12 @@ class Room:
         self.engine.reset()
         self.game_started = True
         
-        # Initialize bot policies
+        # Initialize bot policies using model registry
         for i, seat in enumerate(self.seats):
             if seat.is_bot:
-                self._bot_policies[i] = RandomPolicy(seed=i)
+                self._bot_policies[i] = model_registry.create_policy(
+                    seat.model_id, seed=i
+                )
 
     def get_state_for_player(self, seat: int) -> GameStateSchema:
         """Get game state from a player's perspective."""
@@ -177,6 +188,9 @@ class Room:
             
             rotated_players.append(PlayerSchema(
                 id=actual_idx,
+                name=player_seat.player_name or f"Player {actual_idx + 1}",
+                emoji=player_seat.player_emoji or "👤",
+                is_bot=player_seat.is_bot,
                 tokens=gem_collection_to_schema(player.tokens),
                 bonuses=gem_collection_to_schema(player.bonuses),
                 points=player.points,
@@ -267,7 +281,8 @@ class Room:
             
             policy = self._bot_policies.get(current)
             if not policy:
-                policy = RandomPolicy(seed=current)
+                # Fallback: create policy from model registry
+                policy = model_registry.create_policy(seat.model_id, seed=current)
                 self._bot_policies[current] = policy
             
             valid_actions = self.engine.get_valid_actions()
@@ -329,14 +344,14 @@ class RoomManager:
     def __init__(self):
         self._rooms: dict[str, Room] = {}
 
-    def create_room(self, num_players: int, player_name: str) -> tuple[Room, str, int]:
+    def create_room(self, num_players: int, player_name: str, player_emoji: str = "👤") -> tuple[Room, str, int]:
         """Create a new room and add the creator. Returns (room, token, seat)."""
         room_id = generate_room_id()
         while room_id in self._rooms:
             room_id = generate_room_id()
         
         room = Room(room_id=room_id, num_players=num_players)
-        token, seat = room.add_player(player_name)
+        token, seat = room.add_player(player_name, player_emoji)
         room.host_seat = seat
         
         self._rooms[room_id] = room
@@ -349,6 +364,65 @@ class RoomManager:
     def delete_room(self, room_id: str):
         """Delete a room."""
         self._rooms.pop(room_id, None)
+
+    def create_test_room(
+        self,
+        room_id: str,
+        player_name: str,
+        player_emoji: str,
+        player_tokens: int,
+        token: Optional[str] = None,
+    ) -> tuple[Room, str, int]:
+        """Create a test room with specific state for E2E testing. Returns (room, token, seat)."""
+        from splendor.models.gems import GemCollection
+
+        # Use provided room_id
+        room_id = room_id.upper()
+
+        # Create room with 2 players
+        room = Room(room_id=room_id, num_players=2)
+
+        # Use provided token or generate one
+        if token:
+            # Manually add player with custom token
+            seat = 0
+            room.seats[seat].player_name = player_name
+            room.seats[seat].player_emoji = player_emoji
+            room.seats[seat].player_token = token
+            room.seats[seat].is_connected = True
+        else:
+            token, seat = room.add_player(player_name, player_emoji)
+
+        room.host_seat = seat
+
+        # Add bot to second seat
+        room.configure_seat(1, is_bot=True, model_id="random")
+
+        # Start the game
+        room.start_game()
+
+        # Modify player's tokens to have the specified amount
+        if player_tokens > 0 and room.engine:
+            player = room.engine.state.players[0]
+            # Distribute tokens evenly across gem types
+            gems_per_type = player_tokens // 5
+            remainder = player_tokens % 5
+
+            # Create new GemCollection with desired token counts
+            new_tokens = GemCollection(
+                diamond=gems_per_type + (1 if remainder > 0 else 0),
+                sapphire=gems_per_type + (1 if remainder > 1 else 0),
+                emerald=gems_per_type + (1 if remainder > 2 else 0),
+                ruby=gems_per_type + (1 if remainder > 3 else 0),
+                onyx=gems_per_type + (1 if remainder > 4 else 0),
+                gold=0,
+            )
+
+            # Use object.__setattr__ to bypass frozen model
+            object.__setattr__(player, "tokens", new_tokens)
+
+        self._rooms[room_id] = room
+        return room, token, seat
 
 
 # Global room manager instance

@@ -13,12 +13,16 @@ interface GameBoardProps {
   selectedCard: CardType | null;
   selectedDeckTier: number | null;
   selectedReservedCard: CardType | null;
+  returnGems: GemType[];
+  needsReturnGems: boolean;
+  requiredReturnCount: number;
   
   // Selection handlers
   onGemClick: (gem: GemType) => void;
   onCardClick: (card: CardType) => void;
   onDeckClick: (tier: 1 | 2 | 3) => void;
   onReservedClick: (card: CardType) => void;
+  onReturnGemClick: (gem: GemType) => void;
   
   // Action handlers
   onTakeGems: () => void;
@@ -42,10 +46,14 @@ export function GameBoard({
   selectedCard,
   selectedDeckTier,
   selectedReservedCard,
+  returnGems,
+  needsReturnGems,
+  requiredReturnCount,
   onGemClick,
   onCardClick,
   onDeckClick,
   onReservedClick,
+  onReturnGemClick,
   onTakeGems,
   onBuyCard,
   onReserveCard,
@@ -110,6 +118,7 @@ export function GameBoard({
         selectedGems={selectedGems}
         onGemClick={onGemClick}
         disabled={!isYourTurn || state.game_over}
+        inReturnMode={needsReturnGems}
       />
 
       {/* Action buttons */}
@@ -119,12 +128,17 @@ export function GameBoard({
           selectedCard={selectedCard}
           selectedDeckTier={selectedDeckTier}
           selectedReservedCard={selectedReservedCard}
+          returnGems={returnGems}
+          needsReturnGems={needsReturnGems}
+          requiredReturnCount={requiredReturnCount}
+          playerTokens={currentPlayer.tokens}
           canTakeGems={canTakeGems}
           canBuyCard={canBuyCard}
           canReserve={canReserve}
           onTakeGems={onTakeGems}
           onBuyCard={onBuyCard}
           onReserveCard={onReserveCard}
+          onReturnGemClick={onReturnGemClick}
           onCancel={onCancel}
           isYourTurn={isYourTurn}
           loading={loading}

@@ -10,6 +10,7 @@ import type {
   CreateRoomResponse,
   JoinRoomResponse,
   ActionResponse,
+  ModelMetadata,
 } from '../types/game';
 
 const API_BASE = '/api';
@@ -68,11 +69,12 @@ async function fetchWithAuth<T>(
 
 export async function createRoom(
   numPlayers: 2 | 3 | 4,
-  playerName: string
+  playerName: string,
+  playerEmoji: string = '👤'
 ): Promise<CreateRoomResponse> {
   return fetchWithAuth('/rooms', {
     method: 'POST',
-    body: JSON.stringify({ num_players: numPlayers, player_name: playerName }),
+    body: JSON.stringify({ num_players: numPlayers, player_name: playerName, player_emoji: playerEmoji }),
   });
 }
 
@@ -82,12 +84,18 @@ export async function getRoomInfo(roomId: string): Promise<RoomInfo> {
 
 export async function joinRoom(
   roomId: string,
-  playerName: string
+  playerName: string,
+  playerEmoji: string = '👤'
 ): Promise<JoinRoomResponse> {
   return fetchWithAuth(`/rooms/${roomId}/join`, {
     method: 'POST',
-    body: JSON.stringify({ player_name: playerName }),
+    body: JSON.stringify({ player_name: playerName, player_emoji: playerEmoji }),
   });
+}
+
+export async function getModels(): Promise<ModelMetadata[]> {
+  const response = await fetchWithAuth<{ models: ModelMetadata[] }>('/models');
+  return response.models;
 }
 
 export async function configureSeat(
@@ -95,13 +103,13 @@ export async function configureSeat(
   token: string,
   seat: number,
   isBot: boolean,
-  botPolicy: 'random' | 'ppo' = 'random'
+  modelId: string = 'random'
 ): Promise<void> {
   await fetchWithAuth(
     `/rooms/${roomId}/configure-seat`,
     {
       method: 'POST',
-      body: JSON.stringify({ seat, is_bot: isBot, bot_policy: botPolicy }),
+      body: JSON.stringify({ seat, is_bot: isBot, model_id: modelId }),
     },
     token
   );
@@ -166,15 +174,23 @@ export function useGameState(
 
 export function useCreateRoom() {
   return useMutation({
-    mutationFn: ({ numPlayers, playerName }: { numPlayers: 2 | 3 | 4; playerName: string }) =>
-      createRoom(numPlayers, playerName),
+    mutationFn: ({ numPlayers, playerName, playerEmoji }: { numPlayers: 2 | 3 | 4; playerName: string; playerEmoji: string }) =>
+      createRoom(numPlayers, playerName, playerEmoji),
   });
 }
 
 export function useJoinRoom() {
   return useMutation({
-    mutationFn: ({ roomId, playerName }: { roomId: string; playerName: string }) =>
-      joinRoom(roomId, playerName),
+    mutationFn: ({ roomId, playerName, playerEmoji }: { roomId: string; playerName: string; playerEmoji: string }) =>
+      joinRoom(roomId, playerName, playerEmoji),
+  });
+}
+
+export function useModels() {
+  return useQuery({
+    queryKey: ['models'],
+    queryFn: getModels,
+    staleTime: 60000, // Models don't change often
   });
 }
 
@@ -182,8 +198,8 @@ export function useConfigureSeat(roomId: string, token: string) {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ seat, isBot, botPolicy }: { seat: number; isBot: boolean; botPolicy?: 'random' | 'ppo' }) =>
-      configureSeat(roomId, token, seat, isBot, botPolicy),
+    mutationFn: ({ seat, isBot, modelId }: { seat: number; isBot: boolean; modelId?: string }) =>
+      configureSeat(roomId, token, seat, isBot, modelId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['room', roomId] });
     },

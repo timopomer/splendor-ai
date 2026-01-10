@@ -48,6 +48,9 @@ class NobleSchema(BaseModel):
 class PlayerSchema(BaseModel):
     """Player state as seen from a perspective."""
     id: int
+    name: str  # Player display name
+    emoji: str  # Player's emoji
+    is_bot: bool  # Whether this is a bot player
     tokens: GemCollectionSchema
     bonuses: GemCollectionSchema
     points: int
@@ -85,6 +88,7 @@ class CreateRoomRequest(BaseModel):
     """Request to create a new room."""
     num_players: Literal[2, 3, 4] = 2
     player_name: str = Field(default="Player 1", max_length=20)
+    player_emoji: str = Field(default="👤", max_length=8)
 
 
 class CreateRoomResponse(BaseModel):
@@ -97,6 +101,7 @@ class CreateRoomResponse(BaseModel):
 class JoinRoomRequest(BaseModel):
     """Request to join a room."""
     player_name: str = Field(default="Player", max_length=20)
+    player_emoji: str = Field(default="👤", max_length=8)
 
 
 class JoinRoomResponse(BaseModel):
@@ -109,7 +114,7 @@ class ConfigureSeatRequest(BaseModel):
     """Request to configure a seat as bot or human."""
     seat: int
     is_bot: bool
-    bot_policy: Literal["random", "ppo"] = "random"
+    model_id: str = "random"  # ID of model from /models endpoint
 
 
 class StartGameRequest(BaseModel):
@@ -121,8 +126,10 @@ class SeatInfo(BaseModel):
     """Info about a seat in a room."""
     seat: int
     player_name: Optional[str] = None
+    player_emoji: Optional[str] = None  # Player's chosen emoji
     is_bot: bool = False
-    bot_policy: Optional[str] = None
+    model_id: Optional[str] = None  # Model ID if bot
+    model_icon: Optional[str] = None  # Icon for display
     is_connected: bool = False
 
 
@@ -200,3 +207,31 @@ class SubmitActionResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Error response."""
     detail: str
+
+
+# --- Model Metadata ---
+class NetworkInfoSchema(BaseModel):
+    """Neural network architecture info."""
+    policy: str
+    architecture: List[int]
+    observation_dim: int
+    action_space: str
+
+
+class ModelMetadataSchema(BaseModel):
+    """Metadata about a bot model."""
+    id: str
+    name: str
+    description: str
+    type: Literal["conventional", "neural"]
+    algorithm: Optional[str] = None
+    network: Optional[NetworkInfoSchema] = None
+    training_steps: Optional[int] = None
+    training_games: Optional[int] = None
+    win_rate_vs_random: Optional[float] = None
+    icon: str  # 🤖 for conventional, 🧠 for neural
+
+
+class ModelsListResponse(BaseModel):
+    """Response containing list of available models."""
+    models: List[ModelMetadataSchema]

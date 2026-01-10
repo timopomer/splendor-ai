@@ -33,18 +33,34 @@ export function PlayerPanel({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-              isSelf ? 'bg-highlight text-board' : 'bg-gray-600 text-white'
+            className={`w-9 h-9 rounded-full flex items-center justify-center text-xl ${
+              player.is_bot
+                ? 'bg-gradient-to-br from-violet-600 to-purple-700'
+                : isSelf
+                ? 'bg-highlight/20 border-2 border-highlight'
+                : 'bg-gray-600/50 border border-gray-500'
             }`}
+            title={player.is_bot ? 'AI Bot' : 'Human Player'}
           >
-            {player.id + 1}
+            {player.emoji}
           </div>
-          <span className="font-medium">
-            {isSelf ? 'You' : `Player ${player.id + 1}`}
-          </span>
+          <div className="flex flex-col">
+            <span className="font-medium leading-tight">
+              {isSelf ? (
+                <>
+                  {player.name} <span className="text-highlight">(You)</span>
+                </>
+              ) : (
+                player.name
+              )}
+            </span>
+            {player.is_bot && (
+              <span className="text-xs text-violet-400">AI</span>
+            )}
+          </div>
           {isCurrentTurn && (
-            <span className="text-xs bg-highlight/20 text-highlight px-2 py-0.5 rounded-full">
-              Current Turn
+            <span className="text-xs bg-highlight/20 text-highlight px-2 py-0.5 rounded-full ml-1">
+              Turn
             </span>
           )}
         </div>
