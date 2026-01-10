@@ -69,7 +69,8 @@ type TestFixtures = {
  * Setup request interception to route API calls to the worker-specific backend
  */
 async function setupApiRouting(page: Page, backendPort: number) {
-  await page.route('**/api/**', async (route) => {
+  // Only intercept requests that start with /api/ (not src/api/ or other paths containing /api/)
+  await page.route(/^http:\/\/[^/]+\/api\//, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
 
@@ -77,8 +78,31 @@ async function setupApiRouting(page: Page, backendPort: number) {
     const backendPath = url.pathname.replace('/api', '');
     const backendUrl = `http://localhost:${backendPort}${backendPath}${url.search}`;
 
-    // Forward the request to the worker-specific backend
-    await route.continue({ url: backendUrl });
+    try {
+      // Fetch from the worker-specific backend
+      const response = await fetch(backendUrl, {
+        method: request.method(),
+        headers: request.headers(),
+        body: request.postDataBuffer() || undefined,
+      });
+
+      // Get response body
+      const body = await response.arrayBuffer();
+
+      // Forward the response back to the browser
+      await route.fulfill({
+        status: response.status,
+        headers: Object.fromEntries(response.headers.entries()),
+        body: Buffer.from(body),
+      });
+    } catch (error) {
+      // If fetch fails, return 503
+      await route.fulfill({
+        status: 503,
+        body: JSON.stringify({ error: 'Backend unavailable' }),
+        headers: { 'content-type': 'application/json' },
+      });
+    }
   });
 }
 
