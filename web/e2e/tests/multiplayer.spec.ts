@@ -1,4 +1,5 @@
-import { test, expect, Browser, Page } from '@playwright/test';
+import { test, expect } from '../fixtures/backend';
+import { Browser, Page } from '@playwright/test';
 
 // Helper to set up two player game
 async function setupTwoPlayerGame(browser: Browser): Promise<[Page, Page, string]> {

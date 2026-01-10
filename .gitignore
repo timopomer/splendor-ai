@@ -221,3 +221,6 @@ playwright/.cache/
 **/*.md
 !/*.md
 !README.md
+
+# TypeScript build info
+*.tsbuildinfo

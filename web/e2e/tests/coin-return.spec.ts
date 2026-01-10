@@ -1,4 +1,5 @@
-import { test as base, expect, Page } from '@playwright/test';
+import { test as base, expect } from '../fixtures/backend';
+import { Page } from '@playwright/test';
 
 // Define test rooms configuration inline
 const TEST_ROOMS_CONFIG = {
@@ -27,11 +28,11 @@ const TEST_ROOMS_CONFIG = {
   ],
 };
 
-// Extend the base test with environment setup
+// Extend the test with TEST_ROOMS configuration
 const test = base.extend({
-  // This fixture runs before each test to set up the TEST_ROOMS env var
+  // This fixture runs before each worker to set up the TEST_ROOMS env var
   testRooms: [async ({}, use) => {
-    // Set environment variable for this test suite
+    // Set environment variable for this test suite - the backend fixture will pick it up
     process.env.TEST_ROOMS = JSON.stringify(TEST_ROOMS_CONFIG);
     await use(undefined);
     // Clean up after test
@@ -65,21 +66,10 @@ function getTestGame(playerTokens: number): TestGameSetup {
   return { roomId, token, playerTokens };
 }
 
-async function verifyBackendInstance(): Promise<string> {
-  const response = await fetch('http://localhost:8000/');
-  const data = await response.json();
-  console.log(`Backend instance: ${data.instance_id}`);
-  return data.instance_id;
-}
-
 /**
  * Navigate to test game
  */
 async function navigateToTestGame(page: Page, setup: TestGameSetup) {
-  // Verify we're connected to the right backend instance
-  const instanceId = await verifyBackendInstance();
-  console.log(`Connected to backend instance: ${instanceId}`);
-
   // Listen for console messages
   page.on('console', msg => console.log(`BROWSER: ${msg.text()}`));
 

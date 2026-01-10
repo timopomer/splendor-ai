@@ -1,4 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '../fixtures/backend';
+import { Page } from '@playwright/test';
 
 // Helper to create a game with a bot opponent
 async function createGameWithBot(page: Page): Promise<string> {
